@@ -14,9 +14,7 @@
 
 package redis
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // Batch pack multiple commands, which should be supported by Do method.
 type Batch struct {
@@ -25,12 +23,24 @@ type Batch struct {
 	index   []int
 }
 
+type TypeStatus int
+
+const (
+	Fail TypeStatus = iota // 0
+	OK                     // 1
+)
+
+type resultError struct {
+	Status TypeStatus
+	Err    error
+}
+
 type nodeBatch struct {
 	node *redisNode
 	cmds []nodeCommand
 
 	err  error
-	done chan int
+	done chan resultError
 }
 
 type nodeCommand struct {
@@ -80,7 +90,7 @@ func (batch *Batch) Put(cmd string, args ...interface{}) error {
 			nodeBatch{
 				node: node,
 				cmds: []nodeCommand{{cmd: cmd, args: args}},
-				done: make(chan int)})
+				done: make(chan resultError)})
 		batch.index = append(batch.index, i)
 	}
 
@@ -95,7 +105,8 @@ func (cluster *Cluster) RunBatch(bat *Batch) ([]interface{}, error) {
 	}
 
 	for i := range bat.batches {
-		<-bat.batches[i].done
+		resp := <-bat.batches[i].done
+		bat.batches[i].err = resp.Err
 	}
 
 	var replies []interface{}
@@ -114,8 +125,10 @@ func (cluster *Cluster) RunBatch(bat *Batch) ([]interface{}, error) {
 func doBatch(batch nodeBatch) {
 	conn, err := batch.node.getConn()
 	if err != nil {
-		batch.err = err
-		batch.done <- 1
+		batch.done <- resultError{
+			Status: Fail,
+			Err:    err,
+		}
 		return
 	}
 
@@ -125,18 +138,22 @@ func doBatch(batch nodeBatch) {
 
 	err = conn.flush()
 	if err != nil {
-		batch.err = err
 		conn.shutdown()
-		batch.done <- 1
+		batch.done <- resultError{
+			Status: Fail,
+			Err:    err,
+		}
 		return
 	}
 
 	for i := range batch.cmds {
 		reply, err := conn.receive()
 		if err != nil {
-			batch.err = err
 			conn.shutdown()
-			batch.done <- 1
+			batch.done <- resultError{
+				Status: Fail,
+				Err:    err,
+			}
 			return
 		}
 
@@ -144,5 +161,8 @@ func doBatch(batch nodeBatch) {
 	}
 
 	batch.node.releaseConn(conn)
-	batch.done <- 1
+	batch.done <- resultError{
+		Status: OK,
+		Err:    nil,
+	}
 }

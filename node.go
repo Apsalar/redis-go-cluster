@@ -66,7 +66,6 @@ type redisNode struct {
 
 func (node *redisNode) getConn() (*redisConn, error) {
 	node.mutex.Lock()
-	_ = "breakpoint"
 	if node.closed {
 		node.mutex.Unlock()
 		return nil, fmt.Errorf("getConn: connection has been closed")
