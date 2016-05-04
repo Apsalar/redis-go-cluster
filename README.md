@@ -22,14 +22,14 @@ to its high efficiency and low lantency.
 ## Installation
 Install redis-go-cluster with go tool:
 ```
-    go get github.com/mllu/redis-go-cluster
+    go get github.com/Apsalar/redis-go-cluster
 ```
     
 ## Usage
 To use redis cluster, you need import the package and create a new cluster client
 with an options:
 ```go
-import "github.com/mllu/redis-go-cluster"
+import "github.com/Apsalar/redis-go-cluster"
 
 cluster, err := redis.NewCluster(
     &redis.Options{
@@ -115,7 +115,7 @@ countries, err := Strings(reply[0], nil)
 
 ## Contact
 Bug reports and feature requests are welcome.
-If you have any question, please email me mornlyn AT gmail
+If you have any question, please email me menglin AT apsalar DOT com
 
 ## License
 redis-go-cluster is available under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html).
