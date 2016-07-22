@@ -338,7 +338,9 @@ func (cluster *Cluster) update(node *redisNode) error {
 		}
 
 		t, err := Values(m[2], err)
-		if err != nil || len(t) != 2 {
+		// api for cluster slots in redis 3.2.1 has changed, right now it return with len=3
+		//if err != nil || len(t) != 2 {
+		if err != nil {
 			return errFormat
 		}
 
